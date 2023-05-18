@@ -4,6 +4,7 @@ import math
 from datetime import datetime, timedelta
 
 import pkg_resources
+
 import pytz
 from dateutil import parser
 from sgp4.earth_gravity import wgs72
@@ -38,6 +39,7 @@ class Satellite:
         self.tle_object = tle_object  # sgp4Object
         self.rgba = rgba
         self.sat_name = raw_tle[0].rstrip()
+        self.sat_num = self.tle_object.satnum
         # extracts the number of orbits per day from the tle and calcualtes the time per orbit
         self.orbital_time_in_minutes = (
             24.0/float(self.raw_tle[2][52:63]))*60.0
@@ -104,7 +106,7 @@ def create_czml_file(start_time, end_time):
 def create_satellite_packet(sat, sim_start_time, sim_end_time):
     'Takes a satelite and returns its orbit'
     availability = get_interval(sim_start_time, sim_end_time)
-    packet = CZMLPacket(id='Satellite/{}'.format(sat.sat_name))
+    packet = CZMLPacket(id=f"{sat.sat_num}")
     packet.availability = availability
     packet.description = Description("{} {}".format(DESCRIPTION_TEMPLATE, sat.sat_name))
     packet.billboard = create_bill_board()
@@ -269,7 +271,9 @@ def get_satellite_orbit(raw_tle, sim_start_time, sim_end_time, czml_file_name):
     sat = Satellite(raw_tle, tle_sgp4, DEFAULT_RGBA)
     doc = create_czml_file(sim_start_time, sim_end_time)
 
+    
     if DEBUGGING:
+        print(f"Debugging: {DEBUGGING}")
         print()
         print('Satellite Name: ', sat.get_satellite_name)
         print('TLE Epoch: ', sat.tle_epoch)
@@ -300,7 +304,7 @@ def read_tles(tles: str, rgbs):
     return sats
 
 
-def tles_to_czml(tles, start_time=None, end_time=None, silent=False):
+def tles_to_czml(tles, start_time=None, end_time=None, silent=True):
     """
     Converts the contents of a TLE file to CZML and returns the JSON as a string
     """
@@ -334,13 +338,13 @@ def tles_to_czml(tles, start_time=None, end_time=None, silent=False):
     return str(doc)
 
 
-def create_czml(inputfile_path, outputfile_path=None, start_time=None, end_time=None):
+def create_czml(inputfile_path, outputfile_path=None, start_time=None, end_time=None, silent = True):
     """
     Takes in a file of TLE's and returns a CZML file visualising their orbits.
     """
     with open(inputfile_path, 'r') as tle_src:
         doc = tles_to_czml(
-            tle_src.read(), start_time=start_time, end_time=end_time)
+            tle_src.read(), start_time=start_time, end_time=end_time, silent=silent)
         if not outputfile_path:
             outputfile_path = "orbit.czml"
         with open(outputfile_path, 'w') as file:

@@ -20,7 +20,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        'pygeoif>=0.7',
+        'pygeoif==0.7',
         'python-dateutil>=2.6.1',
         'pytz>=2018.3',
         'sgp4>=1.4',

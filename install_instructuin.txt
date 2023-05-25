@@ -1,0 +1,3 @@
+# It should be updated.
+# When installing a package using the "setup.py" method, there can be dependency issues with the requirements specified.
+python3 setup.py install

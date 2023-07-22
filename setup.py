@@ -6,7 +6,7 @@ with open("README.md", "r") as file:
 
 setuptools.setup(
     name='tle2czml',
-    version='0.3',
+    version='0.3.1',
     author='Shane Carty',
     author_email='shane.carty87@gmail.com',
     description='Convert TLE\'s to CZML file',

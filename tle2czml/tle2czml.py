@@ -103,7 +103,7 @@ def create_czml_file(start_time, end_time):
     return doc
 
 
-def create_satellite_packet(sat, sim_start_time, sim_end_time):
+def create_satellite_packet(sat, sim_start_time, sim_end_time, propagation_time_step_seconds):
     'Takes a satelite and returns its orbit'
     availability = get_interval(sim_start_time, sim_end_time)
     packet = CZMLPacket(id=f"{sat.sat_num}")
@@ -112,7 +112,7 @@ def create_satellite_packet(sat, sim_start_time, sim_end_time):
     packet.billboard = create_bill_board()
     packet.label = create_label(sat.sat_name, sat.rgba)
     packet.path = create_path(availability, sat, sim_start_time, sim_end_time)
-    packet.position = create_position(sim_start_time, sim_end_time, sat.tle_object)
+    packet.position = create_position(sim_start_time, sim_end_time, propagation_time_step_seconds, sat.tle_object)
     return packet
 
 
@@ -223,7 +223,7 @@ def create_path(total_path_interval, sat, sim_start_time, sim_end_time):
 
     return path
 
-def create_position(start_time, end_time, tle):
+def create_position(start_time, end_time, propagation_time_step_seconds, tle):
     'creates a position'
     pos = Position()
     pos.interpolationAlgorithm = "LAGRANGE"
@@ -232,11 +232,11 @@ def create_position(start_time, end_time, tle):
     pos.epoch = start_time.isoformat()
 
     diff = end_time - start_time
-    number_of_positions = int(diff.total_seconds()/300)
+    number_of_positions = int(diff.total_seconds()/propagation_time_step_seconds)
     # so that there's more than one position
     number_of_positions += 5
     pos.cartesian = get_future_sat_positions(
-        tle, number_of_positions, start_time)
+        tle, number_of_positions, start_time, propagation_time_step_seconds)
     return pos
 
 
@@ -245,10 +245,11 @@ def get_interval(current_time, end_time):
     return current_time.isoformat() + "/" + end_time.isoformat()
 
 
-def get_future_sat_positions(sat_tle, number_of_positions, start_time):
+def get_future_sat_positions(sat_tle, number_of_positions, start_time, propagation_time_step_seconds):
     'returns an array of satellite positions'
     time_step = 0
     output = []
+    print(f"{number_of_positions} positions for {sat_tle.satnum}")
     for _ in range(number_of_positions):
         current_time = start_time + timedelta(seconds=time_step)
         eci_position, _ = sat_tle.propagate(current_time.year, current_time.month, current_time.day,
@@ -259,7 +260,7 @@ def get_future_sat_positions(sat_tle, number_of_positions, start_time):
         output.append(eci_position[0] * 1000)  # converts km's to m's
         output.append(eci_position[1] * 1000)
         output.append(eci_position[2] * 1000)
-        time_step += TIME_STEP
+        time_step += propagation_time_step_seconds
 
     return output
 
@@ -304,7 +305,7 @@ def read_tles(tles: str, rgbs):
     return sats
 
 
-def tles_to_czml(tles, start_time=None, end_time=None, silent=True):
+def tles_to_czml(tles, start_time=None, end_time=None, propagation_time_step_seconds=300, silent=True):
     """
     Converts the contents of a TLE file to CZML and returns the JSON as a string
     """
@@ -331,20 +332,20 @@ def tles_to_czml(tles, start_time=None, end_time=None, silent=True):
             print('Orbit time in Minutes: ', orbit_time_in_minutes)
             print()
 
-        sat_packet = create_satellite_packet(sat, start_time, end_time)
+        sat_packet = create_satellite_packet(sat, start_time, end_time, propagation_time_step_seconds)
 
         doc.packets.append(sat_packet)
 
     return str(doc)
 
 
-def create_czml(inputfile_path, outputfile_path=None, start_time=None, end_time=None, silent = True):
+def create_czml(inputfile_path, outputfile_path=None, start_time=None, end_time=None, propagation_time_step_seconds = 300, silent = True):
     """
     Takes in a file of TLE's and returns a CZML file visualising their orbits.
     """
     with open(inputfile_path, 'r') as tle_src:
         doc = tles_to_czml(
-            tle_src.read(), start_time=start_time, end_time=end_time, silent=silent)
+            tle_src.read(), start_time=start_time, end_time=end_time, propagation_time_step_seconds=propagation_time_step_seconds, silent=silent)
         if not outputfile_path:
             outputfile_path = "orbit.czml"
         with open(outputfile_path, 'w') as file:

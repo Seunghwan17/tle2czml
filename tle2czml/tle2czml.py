@@ -13,7 +13,7 @@ from sgp4.io import twoline2rv
 from .czml import CZML, Billboard, CZMLPacket, Description, Label, Path, Position
 
 BILLBOARD_SCALE = 1.5
-LABEL_FONT = "11pt Lucida Console"
+LABEL_FONT = "30pt Lucida Console"
 SATELITE_IMAGE_URI = (
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNS"
     + "R0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAADJSURBVDhPnZ"
@@ -138,8 +138,8 @@ def create_label(sat_id, rgba):
     lab.font = LABEL_FONT
     lab.horizontalOrigin = "LEFT"
     lab.outlineColor = {"rgba": [0, 0, 0, 255]}
-    lab.outlineWidth = 2
-    lab.pixelOffset = {"cartesian2": [12, 0]}
+    lab.outlineWidth = 4
+    lab.pixelOffset = {"cartesian2": [14, 0]}
     lab.style = "FILL_AND_OUTLINE"
     lab.verticalOrigin = "CENTER"
     return lab
@@ -170,7 +170,7 @@ def create_path(total_path_interval, sat, sim_start_time, sim_end_time):
         sub_path_interval_start.isoformat() + "/" + sub_path_interval_end.isoformat()
     )
 
-    orbital_time_in_seconds = sat.orbital_time_in_minutes * 60.0
+    orbital_time_in_seconds = sat.orbital_time_in_minutes * 60.0 / 4.0
 
     if DEBUGGING:
         # goes from tle epoch to 12/24 hours in future
@@ -200,7 +200,8 @@ def create_path(total_path_interval, sat, sim_start_time, sim_end_time):
             + sub_path_interval_end.isoformat()
         )
 
-    path.leadTime = lead_or_trail_times
+    # path.leadTime = lead_or_trail_times
+    path.leadTime = {"number": orbital_time_in_seconds}
 
     if DEBUGGING:
         print()
@@ -239,7 +240,8 @@ def create_path(total_path_interval, sat, sim_start_time, sim_end_time):
             + sub_path_interval_end.isoformat()
         )
 
-    path.trailTime = lead_or_trail_times
+    # path.trailTime = lead_or_trail_times
+    path.trailTime = {"number": orbital_time_in_seconds}
 
     return path
 
@@ -315,7 +317,7 @@ def get_satellite_orbit(raw_tle, sim_start_time, sim_end_time, czml_file_name):
         file.write(str(doc))
 
 
-def read_tles(tles: str, rgbs):
+def read_tles(tles: str, rgbs, gravity_model=wgs72):
     "reads tle from string"
     raw_tle = []
     sats = []
@@ -325,7 +327,7 @@ def read_tles(tles: str, rgbs):
         raw_tle.append(line)
 
         if i % 3 == 0:
-            tle_object = twoline2rv(raw_tle[1], raw_tle[2], wgs72)
+            tle_object = twoline2rv(raw_tle[1], raw_tle[2], gravity_model)
             sats.append(Satellite(raw_tle, tle_object, rgbs.get_next_color()))
             raw_tle = []
         i += 1
@@ -334,13 +336,18 @@ def read_tles(tles: str, rgbs):
 
 
 def tles_to_czml(
-    tles, start_time=None, end_time=None, propagation_time_step_seconds=300, silent=True
+    tles,
+    start_time=None,
+    end_time=None,
+    propagation_time_step_seconds=300,
+    silent=True,
+    gravity_model=wgs72,
 ):
     """
     Converts the contents of a TLE file to CZML and returns the JSON as a string
     """
     rgbs = Colors()
-    satellite_array = read_tles(tles, rgbs)
+    satellite_array = read_tles(tles, rgbs, gravity_model)
 
     if not start_time:
         start_time = datetime.utcnow().replace(tzinfo=pytz.UTC)
@@ -378,6 +385,7 @@ def create_czml(
     end_time=None,
     propagation_time_step_seconds=300,
     silent=True,
+    gravity_model=wgs72,
 ):
     """
     Takes in a file of TLE's and returns a CZML file visualising their orbits.
@@ -389,6 +397,7 @@ def create_czml(
             end_time=end_time,
             propagation_time_step_seconds=propagation_time_step_seconds,
             silent=silent,
+            gravity_model=gravity_model,
         )
         if not outputfile_path:
             outputfile_path = "orbit.czml"
